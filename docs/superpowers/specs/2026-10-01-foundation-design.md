@@ -19,7 +19,7 @@ standard format itself and the repo it lives in.
 - `tripwire parse <session.jsonl>` prints a `Run` as JSON.
 - Success =
   1. Unit tests pass on small hand-made fixture logs.
-  2. The parser runs over **all 51 local sessions** in `~/.claude/projects` without crashing,
+  2. The parser runs over **all local main sessions** in `~/.claude/projects` without crashing,
      and a summary script reports steps / file changes / test runs per session.
   3. For a fixture where the agent says "all tests pass" after a failing test run,
      the `Run` shows the failing `TestRun` and the claim in `final_message` — the raw
@@ -44,7 +44,8 @@ standard format itself and the repo it lives in.
 - `Run` — the whole session: `run_id`, `source` (inspect/claude_code),
   `problem_id`, `split` (original/oneoff/conflicting/custom/real), `model`, `spec`,
   `steps`, `changes`, `test_runs`, `tests_passed`, `final_message`,
-  plus optional labels `label`, `cheat_types`, `label_source`.
+  plus optional labels `label`, `cheat_types`, `label_source`, and `meta`
+  (source-specific extras: `cwd`, `path`, `bad_lines`).
   - `Run.diff()` builds a readable unified diff from `changes`.
   - `Run.without_labels()` returns a copy with labels cleared; detectors only ever
     receive this, so they can't accidentally see the answer.
@@ -68,9 +69,14 @@ Rules:
   kept only when the result is not an error:
   - `Write` → `after` = content; `before` = `None` unless the same file was seen earlier
     in the session (then the last known content).
-  - `Edit` / `MultiEdit` → `before`/`after` are the edited snippets (old/new strings).
-    Whole-file contents aren't in the log, so v1 stores snippets; that is enough for
-    spotting a removed assertion or an added `skip`.
+  - `Edit` / `MultiEdit` → when the result's `toolUseResult.originalFile` (or an earlier
+    known version of the file) is available and contains the old string, `before` is the
+    whole file and `after` is it with the edit applied. Otherwise (about half of local
+    edits) `before`/`after` are the edited snippets — still enough to spot a removed
+    assertion or an added `skip`.
+  - Write's `before` comes from `toolUseResult.originalFile` when present.
+- Session files under a `subagents/` directory are skipped by default (local survey:
+  16 main sessions, 35 subagent logs).
   - `NotebookEdit` and others: ignored in v1.
 - **Test runs**: a `Bash` call whose command matches a test runner
   (`pytest`, `python -m pytest`, `python -m unittest`, `npm test`, `npm run test`,

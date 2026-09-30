@@ -2,14 +2,14 @@ from tripwire.models import FileChange, Run, Step, TestRun, truncate
 
 
 def make_run(**overrides) -> Run:
-    fields = dict(
-        run_id="r1",
-        source="claude_code",
-        split="real",
-        spec="Fix add_days",
-        steps=[Step(index=0, role="user", kind="text", text="Fix add_days")],
-        test_runs=[TestRun(step_index=1, command="pytest", passed=False, summary="1 failed")],
-        changes=[
+    fields = {
+        "run_id": "r1",
+        "source": "claude_code",
+        "split": "real",
+        "spec": "Fix add_days",
+        "steps": [Step(index=0, role="user", kind="text", text="Fix add_days")],
+        "test_runs": [TestRun(step_index=1, command="pytest", passed=False, summary="1 failed")],
+        "changes": [
             FileChange(path="app.py", is_test=False, before=None, after="x = 1\n", step_index=2),
             FileChange(
                 path="tests/test_a.py",
@@ -19,12 +19,11 @@ def make_run(**overrides) -> Run:
                 step_index=3,
             ),
         ],
-        label="cheated",
-        cheat_types=["T1"],
-        label_source="automatic",
-    )
-    fields.update(overrides)
-    return Run(**fields)
+        "label": "cheated",
+        "cheat_types": ["T1"],
+        "label_source": "automatic",
+    }
+    return Run(**{**fields, **overrides})
 
 
 def test_run_round_trips_through_json():

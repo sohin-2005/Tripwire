@@ -10,6 +10,9 @@ _TEST_NAME = re.compile(
     r"^(test_.*\.py|.*_test\.py|.*_test\.go|.*\.(test|spec)\.[jt]sx?|conftest\.py)$"
 )
 
+# Heredoc bodies (`<<'EOF' ... EOF`) are file contents or scripts, not commands.
+_HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.DOTALL | re.MULTILINE)
+_UNCLOSED_HEREDOC = re.compile(r"<<-?\s*(['\"]?)\w+\1.*", re.DOTALL)
 _SEGMENT_SPLIT = re.compile(r"&&|\|\||;|\n")
 _INSTALL = re.compile(r"\b(pip3?|uv|poetry|npm|yarn|pnpm|bun|brew)\s+(install|add|i)\b")
 _TEST_COMMAND = re.compile(
@@ -52,6 +55,7 @@ def is_test_path(path: str) -> bool:
 
 def is_test_command(command: str) -> bool:
     """True if any segment of a shell command runs a test runner (installs don't count)."""
+    command = _UNCLOSED_HEREDOC.sub("", _HEREDOC.sub("", command))
     return any(
         _TEST_COMMAND.search(segment) and not _INSTALL.search(segment)
         for segment in _SEGMENT_SPLIT.split(command)

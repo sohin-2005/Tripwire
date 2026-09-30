@@ -89,6 +89,15 @@ Rules:
   `*.spec.[jt]sx?`, `conftest.py`.
 - Malformed lines are skipped and counted, never crash the parse.
 
+## Known gaps (found by the local survey)
+
+- **File edits made through Bash are not in `changes`.** Local sessions often edit
+  files — including tests — with `python3 - <<'PY' ...` scripts or `cat >> tests/... <<EOF`.
+  They appear only as Bash steps. The rules detector (sub-project 4) must flag Bash
+  commands that write to test paths; a cheat could otherwise hide here.
+- Test-command detection strips heredoc bodies first, so a script that merely mentions
+  `pytest` isn't counted as a test run.
+
 ## Command line (`src/tripwire/cli.py`, standard-library argparse)
 
 - `tripwire parse <file>` → prints the `Run` as JSON.

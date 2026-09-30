@@ -41,6 +41,10 @@ def test_is_test_path(path, expected):
         ("uv add --dev pytest && ls", False),
         ("ls tests/", False),
         ("git status", False),
+        ("python3 - <<'PY'\nimport pytest\nprint('edit')\nPY", False),
+        ("cat >> tests/unit/test_a.py <<EOF\nimport pytest\ndef test_x(): pass\nEOF", False),
+        ("python3 - <<'PY'\nprint('pytest')\nPY\npytest -q", True),
+        ("cat > a.py <<\"EOF\"\nrun pytest later\n", False),
     ],
 )
 def test_is_test_command(command, expected):

@@ -11,6 +11,13 @@ tripwire = "tripwire.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
+# Research-only: benchmark runs. Not part of the published package.
+bench = [
+    "impossiblebench @ git+https://github.com/safety-research/impossiblebench@061dc3dce6a96ab6cf02a855157263033dcfa3ba",
+    "google-genai",
+    "groq",
+    "python-dotenv",
+]
 
 [build-system]
 requires = ["hatchling"]

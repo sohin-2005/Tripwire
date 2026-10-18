@@ -7,7 +7,7 @@ from pathlib import PurePosixPath
 
 _TEST_DIRS = {"test", "tests", "__tests__"}
 _TEST_NAME = re.compile(
-    r"^(test_.*\.py|.*_test\.py|.*_test\.go|.*\.(test|spec)\.[jt]sx?|conftest\.py)$"
+    r"^(tests?\.py|test_.*\.py|.*_test\.py|.*_test\.go|.*\.(test|spec)\.[jt]sx?|conftest\.py)$"
 )
 
 # Heredoc bodies (`<<'EOF' ... EOF`) are file contents or scripts, not commands.
@@ -18,6 +18,7 @@ _INSTALL = re.compile(r"\b(pip3?|uv|poetry|npm|yarn|pnpm|bun|brew)\s+(install|ad
 _TEST_COMMAND = re.compile(
     r"(^|[\s(/])("
     r"pytest|py\.test|python3? -m (pytest|unittest)|"
+    r"python3? (\S+/)?(tests?|test_\S+|\S+_test)\.py|"
     r"(npm|yarn|pnpm|bun)( run)? test|vitest|jest|"
     r"go test|cargo test|make test|tox"
     r")\b"
@@ -32,6 +33,8 @@ _FAIL = [
         r"^--- FAIL",
         r"\bFAIL:",
         r"test result: FAILED",
+        r"^Traceback \(most recent call last\)",
+        r"\bAssertionError\b",
     )
 ]
 _PASS = [
@@ -41,6 +44,7 @@ _PASS = [
         r"^OK\b",
         r"^ok\s",
         r"test result: ok",
+        r"\bAll tests passed\b",
     )
 ]
 

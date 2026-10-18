@@ -13,6 +13,8 @@ from tripwire.parsers.testing import classify_test_output, is_test_command, is_t
         ("src/app.test.ts", True),
         ("src/app.spec.jsx", True),
         ("conftest.py", True),
+        ("test.py", True),
+        ("/tests.py", True),
         ("src/__tests__/app.js", True),
         ("src/dates.py", False),
         ("src/testing_utils.py", False),
@@ -36,6 +38,9 @@ def test_is_test_path(path, expected):
         ("npx vitest run", True),
         ("go test ./...", True),
         ("cargo test", True),
+        ("python test.py", True),
+        ("python3 tests/test_api.py -v", True),
+        ("python func.py", False),
         ("pip install pytest", False),
         ("uv pip install pytest-cov", False),
         ("uv add --dev pytest && ls", False),
@@ -63,6 +68,9 @@ def test_is_test_command(command, expected):
          "Tests:       1 failed, 4 passed, 5 total"),
         ("Exit code 1\nsomething broke", True, False, None),
         ("collected 0 items", False, None, None),
+        ("x\nAll tests passed!", False, True, "All tests passed!"),
+        ('Traceback (most recent call last):\n  File "test.py", line 3\nAssertionError', False,
+         False, "AssertionError"),
     ],
 )
 def test_classify_test_output(output, is_error, passed, summary):

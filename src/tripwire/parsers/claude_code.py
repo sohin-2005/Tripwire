@@ -15,8 +15,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from tripwire.models import FileChange, Run, Step, TestRun, truncate
-from tripwire.parsers.testing import classify_test_output, is_test_command, is_test_path
+from tripwire.models import Run, Step, truncate
+from tripwire.parsers.common import extract_changes_and_tests
 
 # User messages Claude Code injects around slash commands and notifications.
 _WRAPPER_PREFIXES = (
@@ -65,7 +65,15 @@ def parse_claude_code(path: str | Path) -> Run:
             if step.kind == "tool_result" and isinstance(entry.get("toolUseResult"), dict):
                 rich_results[step.tool_use_id] = entry["toolUseResult"]
 
-    changes, test_runs = _extract_changes_and_tests(steps, rich_results, cwd)
+    known: dict[str, str] = {}  # path -> last known full content
+
+    def file_edits(call: Step, result: Step) -> list[tuple[str, str | None, str | None]]:
+        if call.tool_name not in _EDIT_TOOLS:
+            return []
+        extra = rich_results.get(call.tool_use_id, {})
+        return _file_edits(call.tool_name, call.tool_input or {}, extra, known)
+
+    changes, test_runs = extract_changes_and_tests(steps, cwd, file_edits)
     user_texts = [s.text for s in steps if s.role == "user" and s.kind == "text"]
     assistant_texts = [s.text for s in steps if s.role == "assistant" and s.kind == "text"]
     return Run(
@@ -144,41 +152,6 @@ def _result_text(content: Any) -> str:
     return ""
 
 
-def _extract_changes_and_tests(
-    steps: list[Step], rich_results: dict[str, dict[str, Any]], cwd: str | None
-) -> tuple[list[FileChange], list[TestRun]]:
-    results = {s.tool_use_id: s for s in steps if s.kind == "tool_result"}
-    known: dict[str, str] = {}  # path -> last known full content
-    changes: list[FileChange] = []
-    test_runs: list[TestRun] = []
-    for call in steps:
-        result = results.get(call.tool_use_id) if call.kind == "tool_call" else None
-        if result is None:
-            continue
-        tool_input = call.tool_input or {}
-        if call.tool_name == "Bash":
-            command = str(tool_input.get("command", ""))
-            if is_test_command(command):
-                passed, summary = classify_test_output(result.text or "", result.is_error)
-                test_runs.append(
-                    TestRun(step_index=call.index, command=command, passed=passed, summary=summary)
-                )
-        elif call.tool_name in _EDIT_TOOLS and not result.is_error:
-            extra = rich_results.get(call.tool_use_id, {})
-            for path, before, after in _file_edits(call.tool_name, tool_input, extra, known):
-                relative = _relative(path, cwd)
-                changes.append(
-                    FileChange(
-                        path=relative,
-                        is_test=is_test_path(relative),
-                        before=before,
-                        after=after,
-                        step_index=call.index,
-                    )
-                )
-    return changes, test_runs
-
-
 def _file_edits(
     tool: str, tool_input: dict[str, Any], extra: dict[str, Any], known: dict[str, str]
 ) -> list[tuple[str, str | None, str | None]]:
@@ -207,11 +180,3 @@ def _file_edits(
             return [(path, original, current)]
     known.pop(path, None)  # we no longer know the whole file
     return [(path, str(e.get("old_string", "")), str(e.get("new_string", ""))) for e in edits]
-
-
-def _relative(path: str, cwd: str | None) -> str:
-    if cwd:
-        prefix = cwd.rstrip("/") + "/"
-        if path.startswith(prefix):
-            return path[len(prefix):]
-    return path
